@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reasoning Step Classification Validator</title>
+    <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            color: #2c3e50;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+        
+        .header p {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+        
+        .upload-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .upload-group {
+            margin-bottom: 20px;
+        }
+        
+        .upload-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #34495e;
+        }
+        
+        .upload-group input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed #bdc3c7;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-group input[type="file"]:hover {
+            border-color: #3498db;
+            background: #ecf0f1;
+        }
+        
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        
+        .btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .metric-card {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .metric-card h3 {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        
+        .metric-card .value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+        
+        .metric-card.f1 .value { color: #e74c3c; }
+        .metric-card.precision .value { color: #3498db; }
+        .metric-card.recall .value { color: #2ecc71; }
+        .metric-card.accuracy .value { color: #9b59b6; }
+        
+        .validation-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .progress-bar {
+            background: #ecf0f1;
+            height: 8px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            height: 100%;
+            transition: width 0.3s;
+        }
+        
+        .step-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .step-info strong {
+            color: #2c3e50;
+        }
+        
+        .step-content {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #e8e8e8;
+            margin: 20px 0;
+            font-family: 'Monaco', 'Courier New', monospace;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .llm-classification {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .llm-classification strong {
+            color: #856404;
+        }
+        
+        .label-tag {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-left: 10px;
+        }
+        
+        .label-Setup { background: #e3f2fd; color: #1565c0; }
+        .label-Computation { background: #f3e5f5; color: #6a1b9a; }
+        .label-Verification { background: #e8f5e9; color: #2e7d32; }
+        .label-Backtrack { background: #fff3e0; color: #e65100; }
+        .label-Exploration { background: #fce4ec; color: #c2185b; }
+        .label-Conclusion { background: #f1f8e9; color: #558b2f; }
+        
+        .validation-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        
+        .btn-validate {
+            flex: 1;
+            max-width: 200px;
+            padding: 16px 32px;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-correct {
+            background: #2ecc71;
+            color: white;
+        }
+        
+        .btn-correct:hover {
+            background: #27ae60;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(46, 204, 113, 0.3);
+        }
+        
+        .btn-incorrect {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn-incorrect:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+        }
+        
+        .btn-skip {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        .btn-skip:hover {
+            background: #7f8c8d;
+        }
+        
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        
+        .btn-nav {
+            background: #34495e;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .btn-nav:hover {
+            background: #2c3e50;
+        }
+        
+        .btn-nav:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+        
+        .export-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-top: 30px;
+            text-align: center;
+        }
+        
+        .btn-export {
+            background: #16a085;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-export:hover {
+            background: #138d75;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(22, 160, 133, 0.3);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+        
+        .confusion-matrix {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-top: 30px;
+        }
+        
+        .confusion-matrix h2 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: center;
+            border: 1px solid #e0e0e0;
+        }
+        
+        th {
+            background: #34495e;
+            color: white;
+            font-weight: 600;
+        }
+        
+        td {
+            background: #f8f9fa;
+        }
+        
+        .cell-correct {
+            background: #d4edda !important;
+            font-weight: 600;
+        }
+        
+        .cell-incorrect {
+            background: #f8d7da !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useCallback } = React;
+        
+        const LABELS = ["Setup", "Computation", "Verification", "Backtrack", "Exploration", "Conclusion"];
+        
+        function App() {
+            const [classifiedFile, setClassifiedFile] = useState(null);
+            const [trajectoryFile, setTrajectoryFile] = useState(null);
+            const [validationData, setValidationData] = useState([]);
+            const [currentIndex, setCurrentIndex] = useState(0);
+            const [validations, setValidations] = useState({});
+            const [isLoaded, setIsLoaded] = useState(false);
+            const [metrics, setMetrics] = useState(null);
+            
+            const parseNumpyArray = (str) => {
+                if (!str) return [];
+                const matches = str.match(/'([^']+)'/g);
+                return matches ? matches.map(m => m.replace(/'/g, '').trim()) : [];
+            };
+            
+            const segmentTrace = (trace) => {
+                if (!trace) return [];
+                const parts = trace.split(/\n{2,}/);
+                return parts.map(p => p.trim()).filter(p => p.length > 10);
+            };
+            
+            const processData = async () => {
+                if (!classifiedFile || !trajectoryFile) return;
+                
+                const classifiedData = await new Promise((resolve) => {
+                    Papa.parse(classifiedFile, {
+                        header: true,
+                        complete: (results) => resolve(results.data)
+                    });
+                });
+                
+                const trajectoryData = await new Promise((resolve) => {
+                    Papa.parse(trajectoryFile, {
+                        header: true,
+                        complete: (results) => resolve(results.data)
+                    });
+                });
+                
+                const samples = [];
+                
+                classifiedData.forEach((row) => {
+                    const questionId = parseInt(row.question_id);
+                    const model = row.model;
+                    const labels = parseNumpyArray(row.labels);
+                    const correct = parseInt(row.correct);
+                    const domain = row.domain;
+                    
+                    const trajRow = trajectoryData.find(t => 
+                        parseInt(t.metadata?.match(/\d+/)?.[0] || -1) === questionId
+                    );
+                    
+                    if (!trajRow) return;
+                    
+                    const traceColumn = model === 'gemini' ? 'gemini_thinking_trajectory' : 'deepseek_thinking_trajectory';
+                    const steps = segmentTrace(trajRow[traceColumn]);
+                    
+                    const minLen = Math.min(steps.length, labels.length);
+                    
+                    for (let i = 0; i < minLen; i++) {
+                        samples.push({
+                            id: `${questionId}_${model}_${i}`,
+                            questionId,
+                            model,
+                            stepIndex: i,
+                            stepContent: steps[i],
+                            llmLabel: labels[i],
+                            correct,
+                            domain,
+                            question: trajRow.question
+                        });
+                    }
+                });
+                
+                // Random sample of 200
+                const shuffled = samples.sort(() => Math.random() - 0.5);
+                const sampled = shuffled.slice(0, 200);
+                
+                setValidationData(sampled);
+                setIsLoaded(true);
+            };
+            
+            const calculateMetrics = useCallback(() => {
+                const validated = Object.keys(validations);
+                if (validated.length === 0) return null;
+                
+                let tp = 0, fp = 0, tn = 0, fn = 0;
+                
+                validated.forEach(id => {
+                    const isCorrect = validations[id];
+                    if (isCorrect === true) {
+                        tp++;
+                    } else if (isCorrect === false) {
+                        fp++;
+                    }
+                });
+                
+                const total = validated.length;
+                const accuracy = tp / total;
+                const precision = tp / (tp + fp) || 0;
+                const recall = tp / (tp + fn + tp) || 0;
+                const f1 = 2 * (precision * recall) / (precision + recall) || 0;
+                
+                return {
+                    accuracy,
+                    precision,
+                    recall,
+                    f1,
+                    validated: total,
+                    total: validationData.length,
+                    tp,
+                    fp,
+                    tn,
+                    fn
+                };
+            }, [validations, validationData]);
+            
+            useEffect(() => {
+                setMetrics(calculateMetrics());
+            }, [validations, calculateMetrics]);
+            
+            const handleValidation = (isCorrect) => {
+                const current = validationData[currentIndex];
+                setValidations(prev => ({
+                    ...prev,
+                    [current.id]: isCorrect
+                }));
+                
+                if (currentIndex < validationData.length - 1) {
+                    setCurrentIndex(currentIndex + 1);
+                }
+            };
+            
+            const handleSkip = () => {
+                if (currentIndex < validationData.length - 1) {
+                    setCurrentIndex(currentIndex + 1);
+                }
+            };
+            
+            const exportResults = () => {
+                const results = validationData.map(item => ({
+                    ...item,
+                    humanValidation: validations[item.id] === true ? 'Correct' : 
+                                    validations[item.id] === false ? 'Incorrect' : 'Not validated',
+                    agreement: validations[item.id] === true
+                }));
+                
+                const csv = Papa.unparse(results);
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'validation_results.csv';
+                a.click();
+            };
+            
+            if (!isLoaded) {
+                return (
+                    <div className="container">
+                        <div className="header">
+                            <h1>🔍 Reasoning Step Classification Validator</h1>
+                            <p>Validate LLM classifications of reasoning steps and calculate performance metrics</p>
+                        </div>
+                        
+                        <div className="upload-section">
+                            <div className="upload-group">
+                                <label>📊 Classified Traces CSV (classified_traces.csv)</label>
+                                <input 
+                                    type="file" 
+                                    accept=".csv"
+                                    onChange={(e) => setClassifiedFile(e.target.files[0])}
+                                />
+                            </div>
+                            
+                            <div className="upload-group">
+                                <label>🧠 Trajectory Data CSV (from Hugging Face dataset)</label>
+                                <input 
+                                    type="file" 
+                                    accept=".csv"
+                                    onChange={(e) => setTrajectoryFile(e.target.files[0])}
+                                />
+                            </div>
+                            
+                            <button 
+                                className="btn"
+                                onClick={processData}
+                                disabled={!classifiedFile || !trajectoryFile}
+                            >
+                                Load & Process Data
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+            
+            const current = validationData[currentIndex];
+            const progress = ((currentIndex + 1) / validationData.length) * 100;
+            
+            return (
+                <div className="container">
+                    <div className="header">
+                        <h1>🔍 Reasoning Step Classification Validator</h1>
+                        <p>Sample {currentIndex + 1} of {validationData.length}</p>
+                    </div>
+                    
+                    {metrics && (
+                        <div className="metrics">
+                            <div className="metric-card f1">
+                                <h3>F1 Score</h3>
+                                <div className="value">{(metrics.f1 * 100).toFixed(1)}%</div>
+                            </div>
+                            <div className="metric-card precision">
+                                <h3>Precision</h3>
+                                <div className="value">{(metrics.precision * 100).toFixed(1)}%</div>
+                            </div>
+                            <div className="metric-card recall">
+                                <h3>Recall</h3>
+                                <div className="value">{(metrics.recall * 100).toFixed(1)}%</div>
+                            </div>
+                            <div className="metric-card accuracy">
+                                <h3>Accuracy</h3>
+                                <div className="value">{(metrics.accuracy * 100).toFixed(1)}%</div>
+                            </div>
+                            <div className="metric-card">
+                                <h3>Validated</h3>
+                                <div className="value">{metrics.validated}/{metrics.total}</div>
+                            </div>
+                        </div>
+                    )}
+                    
+                    <div className="validation-card">
+                        <div className="progress-bar">
+                            <div className="progress-fill" style={{width: `${progress}%`}}></div>
+                        </div>
+                        
+                        <div className="step-info">
+                            <strong>Question ID:</strong> {current.questionId} | 
+                            <strong> Model:</strong> {current.model} | 
+                            <strong> Step:</strong> {current.stepIndex + 1} | 
+                            <strong> Domain:</strong> {current.domain} | 
+                            <strong> Answer Correct:</strong> {current.correct ? '✓' : '✗'}
+                        </div>
+                        
+                        {current.question && (
+                            <div className="step-info">
+                                <strong>Question:</strong> {current.question.substring(0, 200)}...
+                            </div>
+                        )}
+                        
+                        <div className="llm-classification">
+                            <strong>LLM Classification:</strong>
+                            <span className={`label-tag label-${current.llmLabel}`}>
+                                {current.llmLabel}
+                            </span>
+                        </div>
+                        
+                        <div className="step-content">
+                            {current.stepContent}
+                        </div>
+                        
+                        <div className="validation-actions">
+                            <button 
+                                className="btn-validate btn-correct"
+                                onClick={() => handleValidation(true)}
+                            >
+                                ✓ Correct Classification
+                            </button>
+                            <button 
+                                className="btn-validate btn-incorrect"
+                                onClick={() => handleValidation(false)}
+                            >
+                                ✗ Incorrect Classification
+                            </button>
+                            <button 
+                                className="btn-validate btn-skip"
+                                onClick={handleSkip}
+                            >
+                                → Skip
+                            </button>
+                        </div>
+                        
+                        <div className="navigation">
+                            <button 
+                                className="btn-nav"
+                                onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
+                                disabled={currentIndex === 0}
+                            >
+                                ← Previous
+                            </button>
+                            <button 
+                                className="btn-nav"
+                                onClick={() => setCurrentIndex(Math.min(validationData.length - 1, currentIndex + 1))}
+                                disabled={currentIndex === validationData.length - 1}
+                            >
+                                Next →
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div className="export-section">
+                        <h2>Export Results</h2>
+                        <p style={{marginBottom: '20px', color: '#7f8c8d'}}>
+                            Download your validation results with metrics
+                        </p>
+                        <button className="btn-export" onClick={exportResults}>
+                            📥 Export Results as CSV
+                        </button>
+                    </div>
+                    
+                    {metrics && metrics.validated > 10 && (
+                        <div className="confusion-matrix">
+                            <h2>Classification Performance</h2>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th></th>
+                                        <th>Predicted Correct</th>
+                                        <th>Predicted Incorrect</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <th>Actually Correct</th>
+                                        <td className="cell-correct">{metrics.tp}</td>
+                                        <td className="cell-incorrect">{metrics.fn}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Actually Incorrect</th>
+                                        <td className="cell-incorrect">{metrics.fp}</td>
+                                        <td className="cell-correct">{metrics.tn}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
