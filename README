@@ -1,0 +1,4 @@
+## Step 1: Run classification.py
+This step classifies each chain-of-thought step into the six broad categories of reasoning in the taxonomy. The output file is  classified_traces.csv.
+
+## Step 2: 
