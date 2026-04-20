@@ -1,4 +1,10 @@
 ## Step 1: Run classification.py
 This step classifies each chain-of-thought step into the six broad categories of reasoning in the taxonomy. The output file is  classified_traces.csv.
 
-## Step 2: 
+## Step 2: Run reasoning_validation.html
+Upload classfied_traces.csv and the s1k dataset to conduct validation. 
+
+## Step 3: Run reasoning_traces_analysis.ipynb
+This is the notebook file with all the analysis. 
+
+## Step 4: Run sequential_pattern_matching.py
